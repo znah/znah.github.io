@@ -1,3 +1,4 @@
-theme: jekyll-theme-midnight
+theme: cayman-theme-midnight
 title: Alexander Mordvintsev
 description: Teaching machines and learning from them
+show_downloads: false
