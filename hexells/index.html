@@ -125,6 +125,7 @@ a:visited {
         param.active = false;
         for (let i=0; i<200; ++i) ca.step();
         document.getElementById('fsButton').style.display = "none";
+        document.getElementById('info').style.display = 'none';
       }
     };
     const ca = new CA(gl, models, [160, 160], gui, onready);
