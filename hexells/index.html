@@ -55,14 +55,17 @@ a:visited {
 
 
 <div id='info'>
-  <p> <b style="font-size: larger;">Hexells</b> <br>
-  by <a href="https://twitter.com/zzznah">Alexander Mordvintsev</a>
+  <p> <b style="font-size: large;">Hexells</b>
+  <span style="font-size: smaller;">by <a href="https://twitter.com/zzznah">Alexander Mordvintsev</a><span>
 
   <p>
-    This is an Artifitial Self-Organising System. Cells were trained to build textures
-     by communicating with neighbours only. The system is based on the 
-     <a href="https://distill.pub/2020/growing-ca/">Neural Cellular Automata</a> architecture.
+    is a Self-Organising System of cells, that was trained to build textures
+    using neighbour communication only. This work exposes the relation between
+    the life an individual cell, and the cell collective as a whole.
   </p>
+  <p>     The system is based on the 
+    <a href="https://distill.pub/2020/growing-ca/">Neural Cellular Automata</a>.
+</p>
 
   <p>
     Touch to interact; swipe left or right to change the pattern.
@@ -85,6 +88,12 @@ a:visited {
   import { CA } from "./ca.js"
 
   const canvas = document.querySelector('#glCanvas');
+
+  const requestFullscreen = canvas.requestFullscreen
+      || canvas.webkitRequestFullscreen || canvas.msRequestFullscreen;
+  if (requestFullscreen === undefined) {
+    document.getElementById('fsButton').style.display = 'none';
+  }
 
   document.getElementById('fsButton').onclick = ()=>{
     const elem = canvas;
@@ -144,8 +153,13 @@ a:visited {
     }
 
     const shuffledModels = models.model_names.map((_, i)=>[Math.random(), i]).sort().map(p=>p[1]);
-    ca.paint(0, 0, -1, 132);
-    let curModel = shuffledModels.indexOf(132);
+    let initModelIdx = parseInt(window.location.hash.slice(1));
+    if (isNaN(initModelIdx) || initModelIdx < 0 || initModelIdx >= shuffledModels.length) {
+      initModelIdx = 132;
+    }
+    console.log(initModelIdx);
+    ca.paint(0, 0, -1, initModelIdx);
+    let curModel = shuffledModels.indexOf(initModelIdx);
     let gesture = null;
     function startGestue(pos) {
       gesture = {
@@ -182,9 +196,10 @@ a:visited {
         if (swipe != 0)  {
             const n = shuffledModels.length;
             curModel = (curModel+n+swipe) % n;
-            console.log(shuffledModels[curModel]);
-            ca.paint(0, 0, -1, shuffledModels[curModel]);
+            const i = shuffledModels[curModel];
+            ca.paint(0, 0, -1, i);
             ca.disturb();
+            //window.location.hash = i;
         }
       }
       gesture = null;
