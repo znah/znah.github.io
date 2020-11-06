@@ -19,6 +19,8 @@ gtag('config', 'UA-15552566-1');
 <style>
 html, body {
   margin: 0px;
+  font-family: 'Google Sans', Arial, Helvetica, sans-serif;
+  color: #FFF;
 }
 canvas {
   width: 100vw;
@@ -31,17 +33,18 @@ canvas {
   bottom: 20px; left:20px;
 }
 
-#info{
+.centered { 
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 300px;
   transform: translate(-50%, -50%);
+}
+
+#info{
+  width: 300px;
   background-color: rgba(0, 0, 0, 0.75);
   padding: 20px;
-  color: #FFF;
   z-index:5;
-  font-family: 'Google Sans', Arial, Helvetica, sans-serif;
 }
 
 a:link {
@@ -51,10 +54,28 @@ a:link {
 a:visited {
   color: red;
 }
+
+.hint {
+  font-size: min(10vw, 8vh);
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.hint-anim {
+  animation: fadeIn linear 2s;
+}
+@keyframes fadeIn {
+  0% {opacity:0;}
+  10% {opacity:1;}
+  90% {opacity:1;}
+  100% {opacity:0;}
+}
 </style>
 
+<div id='hint' class='centered hint'>⇦ Swipe ⇨</div>
 
-<div id='info'>
+<div id='info' class='centered'>
   <p> <b style="font-size: large;">Hexells</b>
   <span style="font-size: smaller;">by <a href="https://twitter.com/zzznah">Alexander Mordvintsev</a><span>
 
@@ -67,14 +88,11 @@ a:visited {
     <a href="https://distill.pub/2020/growing-ca/">Neural Cellular Automata</a>.
 </p>
 
-  <p>
-    Touch to interact; swipe left or right to change the pattern.
-  </p>
+<p style="font-size: large;">
+  Touch to interact; swipe left or right to change the pattern.
+</p>
 
-  <div id="hideBtn" style="text-align: center;"><button>Hide</button></div>
-
-  
-
+<div id="hideBtn" style="text-align: center;"><button>Hide</button></div>
 </div>
 
 <canvas id="glCanvas"></canvas>
@@ -87,15 +105,17 @@ a:visited {
 <script type="module">
   import { CA } from "./ca.js"
 
-  const canvas = document.querySelector('#glCanvas');
+  const $ = q=>document.querySelector(q);
+
+  const canvas = $('#glCanvas');
 
   const requestFullscreen = canvas.requestFullscreen
       || canvas.webkitRequestFullscreen || canvas.msRequestFullscreen;
   if (requestFullscreen === undefined) {
-    document.getElementById('fsButton').style.display = 'none';
+    $('#fsButton').style.display = 'none';
   }
 
-  document.getElementById('fsButton').onclick = ()=>{
+  $('#fsButton').onclick = ()=>{
     const elem = canvas;
     const opt = { navigationUI: "hide" };
     if (elem.requestFullscreen) {
@@ -107,8 +127,10 @@ a:visited {
     }
   };
   
-  document.getElementById('hideBtn').onclick = ()=>{
-    document.getElementById('info').style.display = 'none';
+  $('#hideBtn').onclick = ()=>{
+    $('#info').style.display = 'none';
+    $('#hint').classList.add('hint-anim');
+
   };
 
   const gl = canvas.getContext("webgl");
@@ -133,8 +155,8 @@ a:visited {
       if (window.location.search == '?frame') {
         param.active = false;
         for (let i=0; i<200; ++i) ca.step();
-        document.getElementById('fsButton').style.display = "none";
-        document.getElementById('info').style.display = 'none';
+        $('#fsButton').style.display = "none";
+        $('#info').style.display = 'none';
       }
     };
     const ca = new CA(gl, models, [160, 160], gui, onready);
@@ -199,6 +221,7 @@ a:visited {
             const i = shuffledModels[curModel];
             ca.paint(0, 0, -1, i);
             ca.disturb();
+            console.log(i);
             //window.location.hash = i;
         }
       }
@@ -245,7 +268,7 @@ a:visited {
       endGestue(getTouchPos(e.changedTouches[0]));
     });
     param.benchmark = ()=>{
-      document.getElementById('log').insertAdjacentHTML('afterbegin', ca.benchmark());
+      $('#log').insertAdjacentHTML('afterbegin', ca.benchmark());
     }
     gui.add(param, 'benchmark');
 
