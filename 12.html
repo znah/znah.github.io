@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<title>Tiny SwissGL example</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<script src="swissgl.js"></script>
+<style>
+    body, html {margin: 0; padding: 0; overflow: hidden;}
+    #c {width:100vw; height: 100vh}
+</style>
+<canvas id="c"></canvas>
+<script>
+    "use strict";
+    const canvas = document.getElementById('c');
+    const glsl = SwissGL(canvas);
+
+    const U = {releaseTime: 0.5, flashRadius: 0.04};
+    const points = glsl({FP:`
+        vec3 r = hash(ivec3(I, 43));
+            // xy:[0..1]x[0..1], angle:[0..TAU], phase:[0..1]
+            FOut = vec4(r.xy, r.z*TAU, fract(r.z*100.0));
+    `}, {size:[40,40], story:2, format:'rgba32f', tag:'points'});
+
+
+    function rasterizeText(text) {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Set canvas size to fit text
+        const h = 100;
+        const font = ctx.font = `bold ${h}px sans-serif`;//`bold ${h}px sans-serif`;
+        const textWidth = ctx.measureText(text).width;
+        canvas.width = textWidth;
+        canvas.height = h; // Adjust height as needed
+        ctx.font = font;
+        console.log(ctx.font);
+        ctx.fillText(text, 0, h*0.85); // Adjust y-coordinate for font size
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        return glsl({}, {size:[canvas.width, canvas.height], data:imageData.data, 
+            filter:'linear', wrap:'edge', tag:`text${text}`})
+    }
+    const text = rasterizeText('12');
+
+    function step(aspect, touch) {
+        const field = glsl({Clear:0, ...U,
+            aspect, points:points[0], Grid:points[0].size, Blend:'s+d', VP:`
+            vec4 d = points(ID.xy);
+            float flash = float(d.w==0.0);
+            VPos.xy = d.xy*2.0-1.0 + flash*flashRadius*XY*aspect;`, 
+            FP:`smoothstep(1.0, 0.9, length(XY))`},
+        {size:[512, 512], wrap:'edge', tag:'field'});
+
+        glsl({touch, aspect, field, ...U, FP:`
+            vec4 d = Src(I);
+            d.xy += rot2(d.z)[0]*aspect * 0.0005;  // move forward
+            vec3 rng = hash(ivec3(d.xyz*12345.0));
+            if (d.x<=0.0 || d.y<=0.0 || d.x>=1.0 || d.y>=1.0) {
+                d.z = rng.x*TAU;
+                d.xy = clamp(d.xy, 0.0, 1.0);
+            }
+            d.z += (rng.x-0.5)*0.25;  // random steering
+            float sense = field(d.xy).r * step(releaseTime, d.w);
+            d.w = d.w+0.01 + sense*0.05;
+            if (d.w>1.0) { d.w = 0.0;}
+            if (touch.z>0.0 && length((touch.xy-d.xy)/aspect)<0.1) {
+                d.w = rng.x;
+            }
+            FOut = d;
+        `}, points);        
+    }
+
+    let touch = [0,0,0];
+    canvas.addEventListener('pointerout', e=>{touch=[0,0,0];});
+    canvas.addEventListener('pointerup',  e=>{touch=[0,0,0];});
+    canvas.addEventListener('pointermove', e=>{
+        if (!e.isPrimary || e.buttons != 1)  {
+            touch=[0,0,0];
+            return;
+        }
+        const w=canvas.clientWidth, h=canvas.clientHeight;
+        const [x, y] = [e.offsetX/w, (h-e.offsetY-1)/h];
+        touch=[x,y,1];
+    });
+
+    glsl.loop(({time})=>{
+        glsl.adjustCanvas();
+        const w=canvas.width, h=canvas.height;
+        const r=w+h, aspect=[r/w, r/h];
+
+        step(aspect, touch);
+
+        glsl({aspect, text, points:points[0], Grid:points[0].size, Blend:'s+d', ...U, VP:`
+            vec4 d = points(ID.xy);
+            vec2 textpos = (3.0*(d.xy*2.0-1.0)*vec2(1,-1)/aspect)*0.5+0.5;
+            float shift = mix(-length(d.xy-0.5), 0.4, text(textpos).a);
+            float t = fract(d.w+shift)*5.0;
+            float flash = exp(-t*t)*t*2.0;
+            varying vec3 color = mix(vec3(0.2,0.2,0.2), ((ID.x&1)==0)?vec3(1,0.9,0.4):vec3(0.2,0.8,1), flash);
+            float r = mix(0.003, 0.015, flash);
+            VPos.xy = d.xy*2.0-1.0+r*XY*aspect;`, 
+            FP:`color*smoothstep(1.0, 0.2, length(XY)),1.0`});
+    });
+</script>
