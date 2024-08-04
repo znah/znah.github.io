@@ -50,6 +50,7 @@ const TextureFormats = {};
     }
     UniformType2TexTarget[GL.SAMPLER_2D] = GL.TEXTURE_2D;
     UniformType2TexTarget[GL.SAMPLER_2D_ARRAY] = GL.TEXTURE_2D_ARRAY;
+    UniformType2TexTarget[GL.INT_SAMPLER_2D] = GL.TEXTURE_2D;
 
     for (const [name, internalFormat, glformat, type, CpuArray, chn] of [
         ['r8', GL.R8, GL.RED, GL.UNSIGNED_BYTE, Uint8Array, 1],
@@ -57,7 +58,9 @@ const TextureFormats = {};
         ['r16f', GL.R16F, GL.RED, GL.HALF_FLOAT, Uint16Array, 1],
         ['rgba16f', GL.RGBA16F, GL.RGBA, GL.HALF_FLOAT, Uint16Array, 4],
         ['r32f', GL.R32F, GL.RED, GL.FLOAT, Float32Array, 1],
+        ['r32i', GL.R32I, GL.RED_INTEGER, GL.INT, Int32Array, 1],
         ['rg32f', GL.RG32F, GL.RG, GL.FLOAT, Float32Array, 2],
+        ['rg32i', GL.RG32I, GL.RG_INTEGER, GL.INT, Int32Array, 2],
         ['rgba32f', GL.RGBA32F, GL.RGBA, GL.FLOAT, Float32Array, 4],
         ['depth', GL.DEPTH_COMPONENT24, GL.DEPTH_COMPONENT, GL.UNSIGNED_INT, Uint32Array, 1],
     ]) TextureFormats[name] = {internalFormat, glformat, type, CpuArray, chn};
@@ -172,14 +175,15 @@ function compileProgram(gl, vs, fs) {
 const glsl_template = `
 precision highp float;
 precision highp int;
-precision lowp sampler2DArray;
+precision highp sampler2DArray;
+precision highp isampler2D;
 #ifdef VERT
     #define varying out
     #define VPos gl_Position
     layout(location = 0) in int VertexID;
     layout(location = 1) in int InstanceID;
+    int MeshRow;
     ivec2 VID;
-    ivec3 ID;
 #else
     #define varying in
     layout(location = 0) out vec4 FOut;
@@ -192,9 +196,11 @@ precision lowp sampler2DArray;
     layout(location = 7) out vec4 FOut7;
     ivec2 I;
 #endif
+flat varying ivec3 ID;
 
 uniform ivec3 Grid;
 uniform ivec2 Mesh;
+uniform int MeshMode;
 uniform ivec4 View;
 #define ViewSize (View.zw)
 uniform vec2 Aspect;
@@ -208,6 +214,14 @@ varying vec2 UV;
 
 const float PI  = radians(180.0);
 const float TAU = radians(360.0);
+
+#define ASPECT_F(name, expr) vec2 name() {vec2 s = vec2(ViewSize); return vec2(expr);}
+ASPECT_F(viewFit,   min(s.x,s.y)/s)
+ASPECT_F(viewCover, max(s.x,s.y)/s)
+ASPECT_F(viewFitX,  (1.0, s.x/s.y))
+ASPECT_F(viewFitY,  (s.y/s.x, 1.0))
+ASPECT_F(viewMean,  0.5*(s.x+s.y)/s)
+#undef ASPECT_F
 
 // source: https://www.shadertoy.com/view/XlXcW4
 // TODO more complete hash library
@@ -262,16 +276,26 @@ vec4 _sample(sampler2D tex, ivec2 xy) {return texelFetch(tex, xy, 0);}
 vec4 _sample(sampler2DArray tex, vec2 uv, int layer) {return texture(tex, vec3(uv, layer));}
 vec4 _sample(sampler2DArray tex, ivec2 xy, int layer) {return texelFetch(tex, ivec3(xy, layer), 0);}
 
-#ifdef FRAG
+#ifdef VERT
+    void _setupMesh() {
+        int odd = MeshMode == 1 ? MeshRow%2 : 0;
+        int i = clamp(VertexID-odd, 0, Mesh.x*2+1);
+        VID = ivec2(i>>1, MeshRow+(i+odd+1)%2);
+        UV = vec2(VID) / vec2(Mesh);
+        VPos = vec4(XY,0,1);
+    }
+#else
     float isoline(float v) {
         float distToInt = abs(v-round(v));
         return smoothstep(max(fwidth(v), 0.0001), 0.0, distToInt);
     }
     float wireframe() {
         vec2 m = UV*vec2(Mesh);
-        float d1 = isoline(m.x-m.y), d2 = isoline(m.x+m.y);
-        float d = mix(d1, d2, float(int(m.y)%2));
-        return isoline(m.x)+isoline(m.y)+d;
+        float diag = isoline(m.x-m.y);
+        if (MeshMode==1 && (int(m.y)%2==1)) {
+            diag = isoline(m.x+m.y);
+        }
+        return isoline(m.x)+isoline(m.y)+diag;
     }
 #endif
 `;
@@ -328,7 +352,7 @@ const expandVP = memoize(code=>expandCode(code, 'vertex', 'VPos'));
 const expandFP = memoize(code=>expandCode(code, 'fragment', 'FOut'));
 
 function extractVaryings(VP) {
-    return Array.from(stripComments(VP).matchAll(/\bvarying\s+[^;]+;/g))
+    return Array.from(stripComments(VP).matchAll(/(flat)?\s+varying\s+[^;]+;/g))
     .map(m=>m[0]).map(s=>{
         while (s != (s=s.replace(/\([^()]*\)/g, ''))); // remove nested ()
         return s.replace(/=[^,;]*/g,'')  // remove assigned values 
@@ -336,7 +360,7 @@ function extractVaryings(VP) {
 }
 
 function stripVaryings(VP) {
-    return VP.replace(/\bvarying\s+\w+/g,'');
+    return VP.replace(/(flat)?\s+varying\s+\w+/g,'');
 }
 
 function linkShader(gl, uniforms, Inc, VP, FP) {
@@ -353,18 +377,12 @@ function linkShader(gl, uniforms, Inc, VP, FP) {
     #define VERT
     ${prefix}\n${VP}
     void main() {
-      int rowVertN = Mesh.x*2+3;
-      int rowI = VertexID/rowVertN;
-      int rowVertI = min(VertexID%rowVertN, rowVertN-2);
-      int odd = rowI%2;
-      if (odd==0) rowVertI = rowVertN-rowVertI-2;
-      VID = ivec2(rowVertI>>1, rowI + (rowVertI+odd+1)%2);
       int ii = InstanceID;
+      MeshRow = ii % Mesh.y; ii/=Mesh.y;
       ID.x = ii % Grid.x; ii/=Grid.x;
       ID.y = ii % Grid.y; ii/=Grid.y;
       ID.z = ii;
-      UV = vec2(VID) / vec2(Mesh);
-      VPos = vec4(XY,0,1);
+      _setupMesh();
       vertex();
       VPos.xy *= Aspect;
     }`, `
@@ -403,6 +421,9 @@ class TextureSampler {
             setf('MAG_FILTER', filter=='miplinear' ? gl.LINEAR : glfilter);
             setf('WRAP_S', glwrap);
             setf('WRAP_T', glwrap);
+            if (filter == 'miplinear' && gl.TEXTURE_MAX_ANISOTROPY_EXT) {
+                setf('MAX_ANISOTROPY_EXT', 4.0);
+            }
             gl._samplers[id] = sampler;
         }
         return gl._samplers[id];
@@ -621,8 +642,12 @@ function ensureVertexArray(gl, neededSize) {
 }
 
 function getTargetSize(gl, {size, scale=1, data}) {
-    if (!size && (data && data.videoWidth && data.videoHeight)) {
+    if (!size && data) {
+        if (data.videoWidth && data.videoHeight) {
         size = [data.videoWidth, data.videoHeight];
+        } else if (data.width && data.height) {
+            size = [data.width, data.height];
+        }
     }
     size = size || [gl.canvas.width, gl.canvas.height];
     return [Math.ceil(size[0]*scale), Math.ceil(size[1]*scale)];
@@ -755,10 +780,11 @@ function drawQuads(self, params, target) {
 
     // Grid, Mesh
     const [gx=1, gy=1, gz=1] = options.Grid || [];
+    const [mx=1, my=1] = options.Mesh || [];
     uniforms.Grid = [gx, gy, gz];
-    uniforms.Mesh = options.Mesh || [1, 1]; // 3d for cube?
-    const vertN = (uniforms.Mesh[0]*2+3)*uniforms.Mesh[1]-1;
-    const instN = gx*gy*gz;
+    uniforms.Mesh = [mx, my]; // 3d for cube?
+    const vertN = (mx+1)*2 + (my>1); // extra vertex to fix row winding in MeshMode==1
+    const instN = my * gx*gy*gz;
     ensureVertexArray(gl, Math.max(vertN, instN));
     gl.bindVertexArray(gl._indexVA);
 
@@ -781,6 +807,10 @@ function SwissGL(canvas_gl) {
         canvas_gl.getContext('webgl2', {alpha:false, antialias:true}) : canvas_gl;
     gl.getExtension("EXT_color_buffer_float");
     gl.getExtension("OES_texture_float_linear");
+    const ext = gl.getExtension("EXT_texture_filter_anisotropic")
+    for (const k in ext) {
+        gl[k] = ext[k];
+    }
     gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
     gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
     ensureVertexArray(gl, 1024);
@@ -799,7 +829,8 @@ function SwissGL(canvas_gl) {
     glsl.adjustCanvas = dpr=>{
         dpr = dpr || self.devicePixelRatio;
         const canvas = gl.canvas;
-        const w = canvas.clientWidth*dpr, h=canvas.clientHeight*dpr;
+        const w = Math.max(1, Math.floor(canvas.clientWidth*dpr));
+        const h = Math.max(1, Math.floor(canvas.clientHeight*dpr));
         if (canvas.width != w || canvas.height != h) {
             canvas.width = w; canvas.height = h;
         }
