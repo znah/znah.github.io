@@ -1,111 +1,124 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
-    <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/grids-responsive-min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <title>Alexander Mordvintsev - Artificial Life Research</title>
+    <meta name="description" content="Research in artificial life, self-organizing systems, and creative AI by Alexander Mordvintsev">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="author" content="Alexander Mordvintsev">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="English">
+    <meta name="theme-color" content="#202032">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://znah.net/">
+    <meta property="og:title" content="ALife, AI, Art - znah.net">
+    <meta property="og:description" content="ALife, AI, Art - znah.net, Alexander Mordvintsev">
+    <meta property="og:image" content="https://znah.net/card.jpg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://znah.net/">
+    <meta property="twitter:title" content="ALife, AI, Art - znah.net">
+    <meta property="twitter:description" content="ALife, AI, Art - znah.net, Alexander Mordvintsev">
+    <meta property="twitter:image" content="https://znah.net/card.jpg">
+
     <link rel="stylesheet" href="style.css">
-    <title>Alexander Mordvintsev</title>
-    <meta name="description" content="ML & ART">
-
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-15552566-1"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-
-    gtag('config', 'UA-15552566-1');
-    </script>
+    <script src="https://cdn.counter.dev/script.js" data-id="8bf0ceb7-d869-4a63-ba6b-32b18ec544f1" data-utcoffset="1"></script>
 </head>
-
 <body>
-    <div class="header">
-        <div class="pure-menu pure-menu-horizontal">
-            <a class="pure-menu-heading" href="">ML & ART</a>
-            <ul class="pure-menu-list">
-                <li class="pure-menu-item">
-                    <a href="https://twitter.com/zzznah" class="pure-menu-link fa fa-twitter"></a>
-                </li>
-                <li class="pure-menu-item">
-                    <a href="https://www.youtube.com/user/ZnahNah" class="pure-menu-link fa fa-youtube-play"></a>
-                </li>
-                <li class="pure-menu-item">
-                    <a href="https://www.linkedin.com/in/alexander-mordvintsev-9a316319/" class="pure-menu-link fa fa-linkedin-square"></a>
-                </li>
-                <li class="pure-menu-item">
-                    <a href="https://github.com/znah" class="pure-menu-link fa fa-github"></a>
-                </li>
-            </ul>
+    <header>
+        <canvas id="demo-canvas"></canvas>
+        <div class="social-icons">
+            <a href="https://x.com/zzznah" aria-label="Twitter">
+                <svg><use href="images/icons.svg#twitter"/></svg>
+            </a>
+            <a href="https://youtube.com/zzznah" aria-label="YouTube">
+                <svg><use href="images/icons.svg#youtube"/></svg>
+            </a>
+            <a href="https://github.com/znah" aria-label="GitHub">
+                <svg><use href="images/icons.svg#github"/></svg>
+            </a>
+            <a href="https://linkedin.com/in/zzznah" aria-label="LinkedIn">
+                <svg><use href="images/icons.svg#linkedin"/></svg>
+            </a>
+            <a href="https://scholar.google.com/citations?user=A_HbzQMAAAAJ" aria-label="Google Scholar">
+                <svg><use href="images/icons.svg#scholar"/></svg>
+            </a>
         </div>
-    </div>
-
-    <div class="pure-g">
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <iframe width="100%" height="100%" src="https://www.youtube-nocookie.com/embed/T0HBD6sUUss?rel=0&showinfo=0" frameborder="0"
-                allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            <aside>Presented at NIPS 2017 ML for Creativity and Design
-                <a href="https://nips2017creativity.github.io/">workshop</a>
-            </aside>
-
+        <div class="header-content">
+            <h1>Alexander Mordvintsev</h1>
+            <div class="terminal">I, code </span><span class="output"></span><span class="command"><span class="cursor"></span></span></div>
         </div>
-        <div class="text-box pure-u-1 pure-u-md-1-2 pure-u-lg-2-3">
-            <div class="l-box">
-                <h1 class="text-box-head">Alexander Mordvintsev</h1>
-                <p class="text-box-subhead">Researcher, Artist</p>
-                <p>I like
-                    <a href="https://en.wikipedia.org/wiki/Emergence">Emergent Phenomenas</a>, Machine Learning, Computer Graphics and Vision. I like to visualize things.
-                    <a href="https://en.wikipedia.org/wiki/DeepDream">DeepDream</a> is my most known creation. I'm working at Google Research on Deep Neural Network visualization,
-                    interpretation and understanding.</p>
+        <div class="scroll-indicator" onclick="document.getElementById('about').scrollIntoView({ behavior: 'smooth' })">
+            <div class="scroll-arrow"></div>
+        </div>
+    </header>
+
+    <main>
+        <section id="about">
+            <p> 
+                Hello! My name is Alexander Mordvintsev, I'm a tinkerer, coder, researcher, and artist. I visualize things to understand how they work. My most known creation is DeepDream, a program I developed while exploring Deep Neural Networks. This curiosity about complex systems led me to study how living organisms self-organize, resulting in the Neural Cellular Automata model. Currently, I'm exploring the foundations of computation in technology and life, seeking to bridge the gap between artificial and biological systems.
+            </p>
+        </section>
+
+        <section id="news">
+            <h2>Recent Projects</h2>
+            <div class="projects">
+                <div class="project-card">
+                    <a href="http://znah.net/tt09">
+                    <h3>Cellular Automata VGA Circuit</h3>
+                    <img src="https://znah.net/tt09/card.jpg"></a>
+                    <p>An ASIC design for generating VGA signals to display scrolling cellular automata patterns, with an accompanying web-based gate-level simulator.</p>
+                </div>
+                <div class="project-card">
+                    <a href="https://google.github.io/swissgl">
+                    <h3>SwissGL library</h3>
+                    <img src="https://google.github.io/swissgl/demo/preview/FancyLenia.jpg"></a>
+                    <p>A prototype of a minimal yet expressive GPU programming library built on WebGL2.</p>
+                </div>
             </div>
-        </div>
+        </section>
+        <p> 
+            More coming soon...
+        </p>
+    </main>
 
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <aside>Feature Visualization on Distill</aside>
-            <img src="images/distill_feature_vis.jpg" />
-        </div>
+    <script src="swissgl.js"></script>
+    <script src="ray.js"></script>
+    <script>
+         const $ = q=>document.querySelector(q);
+         const output = $('.output');
+         const cursor = $('.cursor');
+         const command = $('.command');
+         const print = s=>output.insertAdjacentHTML('beforeend', s)
+         document.addEventListener('keydown', (e) => {
+            if (e.key.length == 1) {
+                cursor.insertAdjacentText('beforebegin', e.key);
+                if (e.key == ' ') {
+                    e.preventDefault();
+                }
+            } else if (e.key == 'Backspace') {
+                if (cursor.previousSibling) {
+                    cursor.previousSibling.remove();
+                }
+            } else if (e.key == 'Enter') {
+                const cmd = command.innerText.trim();
+                command.replaceChildren(cursor);
+                print(cmd+'<br>');
+                if (cmd == 'news'){
+                    $('#news').scrollIntoView({ behavior: 'smooth' });
+                }
+                if (cmd == 'clear'){
+                    output.innerText = '';
+                }
 
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <iframe width="100%" height="100%" src="https://www.youtube-nocookie.com/embed/1PwY-Hfspoc?rel=0&loop=1&showinfo=0" frameborder="0"
-                allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            <aside><b>zoom(art)</b> video,
-                <a href="https://blog.ted.com/more-ted2018-conference-shorts-to-amuse-and-amaze/">displayed at TED2018</a>
-            </aside>
-        </div>
+            }
+        });
 
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <img src="images/distill_building_blocks.jpg" />
-            <aside>The Building Blocks of Interpretability on Distill</aside>
-        </div>
 
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <img src="images/mathbox_jupyter.png" />
-            <aside>Mathbox + Jupyter
-                <a href="https://nbviewer.jupyter.org/github/znah/mathbox/blob/jupyter/examples/notebooks/mathbox.ipynb">demo</a>,
-                <a href="https://www.youtube.com/watch?v=3REYkxKNSmg">video</a>
-            </aside>
-        </div>
 
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <img src="images/deepdream.png" />
-            <aside>
-                <a href="https://www.wired.com/2015/12/inside-deep-dreams-how-google-made-its-computers-go-crazy/">DeepDream story in WIRED</a>
-            </aside>
-        </div>
-
-        <div class="photo-box pure-u-1 pure-u-md-1-2 pure-u-lg-1-3">
-            <iframe width="100%" height="100%" src="https://www.youtube-nocookie.com/embed/QsUm42DJQZI?rel=0&amp;showinfo=0" frameborder="0"
-                allow="autoplay; encrypted-media" allowfullscreen></iframe>
-            <aside>
-                    Coral Growth simulation
-            </aside>
-        </div>
-    </div>
-
+    </script>
 </body>
-
 </html>
