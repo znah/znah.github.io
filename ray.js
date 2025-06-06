@@ -21,20 +21,22 @@ glsl.loop(({time})=>{
     const dy = time*0.05;
     const rayPos = [-0.1,-0.1,0.4];
 
-    const Inc = `vec4 toview(vec3 p) {
+    const Inc = `vec4 toview(vec3 p, vec2 viewOfs) {
         vec4 v = vec4(p, 1.0);
+        v.xy *= rot2(0.3);
         v.yz *= rot2(0.7);
+        v.xy += viewOfs;
+        //v.xyz *= 0.3;
         v.xy *= viewCover();
         v.zw = vec2(-v.z*0.1, 1.0-v.z*0.6);
         return v;
     }
     vec2 flap(float x, float y, float p) {
-        float xp = x*p;
-        float yp1 = 1.0-y*p;
-        if (abs(p)<0.1) {
+        float xp = x*p, yp1 = 1.0-y*p;
+        if (abs(p)<1e-3) {
             return vec2(yp1 * (1.-xp*xp/6.)*x, y + xp*(x - y*xp)/2.);
         } else {
-            return vec2(yp1 * sin(xp)/p, (1.-yp1 * cos(xp)) / p);
+            return vec2(yp1 * sin(xp), (1.-yp1 * cos(xp))) / p;
         }
     }
     `;
@@ -85,7 +87,7 @@ glsl.loop(({time})=>{
             color = vec3(0.5+rot2(rnd.z*1000.0)[0]*0.1,.7);
             color = mix(bottom, color, UV.y);
         }
-        VPos = toview(p);
+        VPos = toview(p, vec2(0));
         varying float fog = exp(-((VPos.z+0.05)*15.0));
     `, FP:`
         vec2 dray = (p.xy-rayPos.xy)*vec2(4.0+sin(time), 4.0);
@@ -108,9 +110,21 @@ glsl.loop(({time})=>{
         p.y = p.y*0.5 + u*u*(1.0-u)*0.4;
         p.xz = flap(p.x, p.z, (sin(time+p.y*0.8)*1.5+0.2));
         p = p*0.3+rayPos;
-        VPos = toview(p);
+        VPos = toview(p, vec2(0));
     `, FP:`
         vec2 pos = p.xy+vec2(0.0,dy*3.0);
         vec3 c = 0.1*cau(pos+0.5).r*vec3(0.5,0.9,1.0);
         FOut = vec4(0.02+vec3(!gl_FrontFacing)*0.6+c,1)`});
+
+    // ray
+    glsl({time, Inc, dy, rayPos, Grid:[2000],
+        DepthTest:'keep', Blend:'s+d', VP:`
+        varying vec3 p = hash(ID.xyy)-vec3(0.5,0.5, 0.2);
+        float phase = hash(ID.xyx+1).x + time*0.5;
+        varying float alpha = max(sin(phase*2.0*PI), 0.0);
+        alpha = 0.1 + alpha*alpha*alpha;
+        p.y = fract(p.y - dy)-0.4;
+        p.xy *= 3.5;
+        VPos = toview(p, XY*0.005);
+    `, FP:`(1.0-dot(XY,XY))*0.7*alpha`});        
 });
