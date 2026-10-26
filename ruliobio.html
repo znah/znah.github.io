@@ -1,0 +1,1057 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ruliobiology · growing creatures from tiny rules</title>
+<style>
+  :root { --bg:#0e1014; --panel:#161a22; --line:#262b36; --fg:#eef0f5; --dim:#9aa1b0;
+          --c1:#ff7a45; --c2:#ffd166; --c3:#4cc9f0; --c4:#b388ff; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; height:100%; background:var(--bg); color:var(--fg); overflow:hidden;
+    font:22px/1.45 ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .slide { position:absolute; inset:0 0 64px; padding:40px 64px 16px; display:none; flex-direction:column; gap:18px; }
+  .slide.active { display:flex; animation:enter .35s ease-out; }
+  @keyframes enter { from { opacity:0; transform:translateY(12px); } }
+  h1 { margin:0; font-size:46px; line-height:1.1; letter-spacing:-.5px; }
+  h2 { margin:0; font-size:36px; letter-spacing:-.3px; }
+  h2 small { font-size:20px; color:var(--dim); font-weight:400; margin-left:10px; }
+  p { margin:0; max-width:1100px; }
+  .dim { color:var(--dim); }
+  .c1 { color:var(--c1); } .c2 { color:var(--c2); } .c3 { color:var(--c3); } .c4 { color:var(--c4); }
+  a { color:var(--c3); text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  .row { display:flex; gap:28px; align-items:flex-start; min-height:0; }
+  .col { display:flex; flex-direction:column; gap:14px; min-height:0; }
+  .grow { flex:1; min-width:0; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px; }
+  canvas { display:block; }
+  .stage { flex:1; min-height:0; }
+  .stage canvas { width:100%; height:100%; border-radius:12px; background:#101217; }
+  button, select { font:inherit; font-size:18px; color:var(--fg); background:var(--panel); border:1px solid var(--line);
+           border-radius:10px; padding:8px 16px; cursor:pointer; }
+  button:hover, select:hover { border-color:#3d4454; }
+  button.on, button.primary { background:var(--c1); border-color:var(--c1); color:#1b0d05; font-weight:700; }
+  .btns { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .big { font-size:64px; font-weight:800; letter-spacing:-1px; line-height:1; }
+  .eq { font-size:40px; font-weight:700; }
+  .num { font:600 20px/1.35 ui-monospace, Menlo, monospace; word-break:break-all; color:var(--c2); }
+  .stat { display:flex; flex-direction:column; align-items:flex-start; }
+  .stat b { font-size:40px; line-height:1; }
+  .stat span { font-size:16px; color:var(--dim); }
+  .stats { display:flex; gap:28px; }
+  .flow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .flow div { background:var(--panel); border:2px solid var(--line); border-radius:14px; padding:14px 18px; text-align:center; min-width:150px; }
+  .flow div b { display:block; font-size:28px; }
+  .flow i { font-style:normal; font-size:30px; color:var(--dim); }
+  .cards { display:flex; gap:16px; }
+  .cards .panel { flex:1; }
+  .cards .panel b { font-size:24px; }
+  input[type=range] { accent-color:var(--c1); width:260px; }
+  .filmstrip { display:flex; gap:8px; overflow-x:auto; overflow-y:hidden; height:106px; padding-bottom:8px; }
+  .filmstrip canvas { width:72px; height:96px; flex:0 0 auto; border-radius:8px; background:#101217; border:2px solid var(--line); cursor:pointer; }
+  .filmstrip canvas:hover { border-color:#4a5263; }
+  .filmstrip canvas.sel { border-color:var(--c1); }
+  #evoNote:empty { display:none; }
+  #evoPlot { width:100%; height:76px; }
+  [data-init="gallery"] { overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  .gallery { display:grid; grid-template-columns:repeat(4, 1fr); gap:14px; padding-bottom:16px; }
+  .gcard { position:relative; aspect-ratio:3/5; min-height:320px; border-radius:12px; background:#101217; border:2px solid var(--line); overflow:hidden; cursor:zoom-in; }
+  #evoArt { cursor:zoom-in; }
+  #lightbox { position:fixed; inset:0; z-index:10; background:#0e1014f2; display:flex; flex-direction:column; padding:16px; gap:10px; }
+  #lightbox[hidden] { display:none; }
+  #lightbox .lb-bar { display:flex; justify-content:flex-end; gap:8px; }
+  #lightbox .lb-bar button { font-size:15px; padding:5px 12px; }
+  #lbArt { flex:1; min-height:0; width:100%; cursor:zoom-out; }
+  .gcard.cur { border-color:var(--c1); }
+  .gcard canvas { width:100%; height:100%; }
+  .gcard span { position:absolute; top:6px; right:8px; font-size:14px; font-weight:700; color:var(--fg); background:#0e1014cc; padding:1px 7px; border-radius:6px; }
+  .title-art { position:absolute; inset:0; width:100%; height:100%; opacity:.9; }
+  .title-text { position:relative; margin-top:auto; margin-bottom:auto; max-width:620px; }
+  .title-text h1 { font-size:72px; }
+  nav { position:absolute; left:0; right:0; bottom:0; height:64px; display:flex; align-items:center; gap:14px; padding:0 24px;
+        border-top:1px solid var(--line); background:#0c0e12; }
+  nav .dots { display:flex; gap:8px; flex:1; justify-content:center; }
+  nav .dots span { width:12px; height:12px; border-radius:50%; background:#2a2f3a; cursor:pointer; }
+  nav .dots span.on { background:var(--c1); }
+  nav .count { color:var(--dim); font-size:16px; min-width:60px; text-align:right; }
+  .tag { display:inline-block; padding:2px 10px; border-radius:999px; background:#232836; font-size:16px; color:var(--dim); }
+  @media (max-width: 820px) {
+    html, body { font-size:16px; }
+    .slide { padding:18px 16px 24px; gap:12px; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; }
+    h1, .title-text h1 { font-size:36px; }
+    h2 { font-size:24px; }
+    h2 small { display:block; margin-left:0; font-size:15px; }
+    button, select { font-size:15px; padding:6px 12px; }
+    .row, .cards { flex-direction:column; gap:14px; }
+    .row > * { width:100% !important; height:auto !important; flex:none; }
+    .stage { width:100%; height:62dvh !important; min-height:300px; flex:none; }
+    [data-init="stepper"] .stage { height:auto !important; min-height:0; }
+    [data-init="stepper"] .stage canvas { height:auto; aspect-ratio:31/16; }
+    [data-init="evolve"] { gap:8px; }
+    [data-init="evolve"] .col { gap:8px; }
+    [data-init="evolve"] .btns { gap:6px; }
+    [data-init="evolve"] button { font-size:14px; padding:5px 10px; }
+    [data-init="evolve"] .goal-lbl { display:none; }
+    [data-init="evolve"] .stat b { font-size:22px; }
+    [data-init="evolve"] .filmstrip { height:80px; padding-bottom:4px; }
+    [data-init="evolve"] .filmstrip canvas { width:56px; height:72px; }
+    [data-init="evolve"] .stage { height:calc(100dvh - 115px) !important; min-height:360px; }
+    #evoPlot { height:52px; }
+    .eq { font-size:24px; margin-left:0 !important; }
+    .num { font-size:14px; }
+    .stats { gap:18px; flex-wrap:wrap; }
+    .stat b { font-size:28px; }
+    .stat span { font-size:13px; }
+    .flow div { min-width:120px; flex:1; padding:10px 12px; }
+    .flow div b { font-size:22px; }
+    .cards .panel b { font-size:19px; }
+    .panel { padding:12px; }
+    input[type=range] { width:140px; flex:1; }
+    .gallery { grid-template-columns:repeat(2, 1fr); gap:10px; }
+    .gcard { min-height:270px; }
+    .title-text { margin-top:8px; }
+    nav { padding:0 12px; gap:8px; }
+    nav .count { min-width:44px; font-size:14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- 1 · Title -->
+<section class="slide" data-init="title">
+  <canvas class="title-art" id="titleArt"></canvas>
+  <div class="title-text">
+    <span class="tag">Ruliobiology</span>
+    <h1>Growing creatures from tiny rules</h1>
+    <p class="dim" style="margin-top:16px">How a table of colored squares can grow shapes that look alive —
+      and how “evolution” can find amazing ones all by itself.</p>
+    <p class="dim" style="margin-top:24px;font-size:18px">
+      Inspired by Stephen Wolfram’s <a href="https://writings.stephenwolfram.com/2026/10/endless-forms-most-beautiful-and-most-wonderful-ruliobiology-and-the-theoretical-foundations-of-biological-form/" target="_blank" rel="noopener">Endless Forms Most Beautiful and Most Wonderful: Ruliobiology</a><br>
+      by Alexander Mordvintsev · <a href="https://znah.net" target="_blank" rel="noopener">znah.net</a>
+    </p>
+  </div>
+</section>
+
+<!-- 2 · How a new row is made -->
+<section class="slide" data-init="stepper">
+  <h2>How a new row is made</h2>
+  <p>We start with one colored square. Each square in the <b>next row</b> looks at <b>three squares above it</b>:
+    the one to the <span class="c3">left</span>, the one <span class="c2">right above</span>, and the one to the
+    <span class="c3">right</span>. Then it finds that pattern in the <b>rule table</b> and copies the answer.</p>
+  <div class="row grow">
+    <div class="col">
+      <div class="panel col">
+        <b>Rule table</b>
+        <canvas id="stepTable"></canvas>
+        <span class="dim" style="font-size:16px">Top: the 3 squares we look at · Bottom: the answer.<br>Click an answer to change it!</span>
+      </div>
+      <div class="btns">
+        <button id="stepBtn" class="primary">Step</button>
+        <button id="stepPlay">▶ Play</button>
+        <button id="stepAll">Finish</button>
+        <button id="stepReset">Reset</button>
+      </div>
+    </div>
+    <div class="stage"><canvas id="stepGrid"></canvas></div>
+  </div>
+</section>
+
+<!-- 3 · Counting patterns & rules -->
+<section class="slide" data-init="cases">
+  <div class="btns" style="justify-content:space-between">
+    <h2>How many patterns — and how many rules?</h2>
+    <div class="btns">
+      <span class="dim">Colors:</span>
+      <button data-k="2" class="on">2</button><button data-k="3">3</button><button data-k="4">4</button><button data-k="5">5</button>
+    </div>
+  </div>
+  <p><b>1. Patterns of three squares:</b> <span class="c3">left</span> (<b id="casesK1">2</b>) ×
+    <span class="c2">middle</span> (<b id="casesK2">2</b>) × <span class="c3">right</span> (<b id="casesK3">2</b>) =
+    <b class="c2" id="casesEq">2 × 2 × 2 = 8 patterns</b></p>
+  <div class="panel" style="display:flex;justify-content:center"><canvas id="casesTable"></canvas></div>
+  <p><b>2. Different rules:</b> each of the <b id="rulesCases">8</b> patterns can have <b id="rulesK">2</b> possible answers,
+    so we multiply <span id="rulesK2">2</span> by itself <span id="rulesCases2">8</span> times:
+    <b id="rulesEq"></b></p>
+  <div class="panel"><div class="num" id="rulesNum"></div></div>
+  <p id="rulesCompare"></p>
+</section>
+
+<!-- 5 · Symmetry -->
+<section class="slide" data-init="sym">
+  <h2>Mirror rules <small>like a butterfly 🦋</small></h2>
+  <p>In a <b>symmetric</b> rule, a pattern and its <b>mirror image</b> always give the same answer.
+    <span class="dim">Move your mouse over a pattern to see its mirror twin.</span></p>
+  <div class="row grow">
+    <div class="col grow">
+      <div class="btns">
+        <button id="symSelf">Patterns that are their own mirror</button>
+        <button id="symPairs">Mirror pairs</button>
+        <button id="symNone" class="on">Show all</button>
+      </div>
+      <div class="panel"><canvas id="symTable"></canvas></div>
+      <div class="stats">
+        <div class="stat"><b class="c2" id="symSelfN">25</b><span>own mirror (left = right)<br>5 × 5</span></div>
+        <div class="stat"><b class="c3" id="symPairN">50</b><span>mirror pairs<br>(125 − 25) ÷ 2</span></div>
+        <div class="stat"><b class="c1" id="symFreeN">75</b><span>choices we really make<br>25 + 50</span></div>
+      </div>
+      <p>Number of symmetric rules: <b>5<sup>75</sup></b> = <span class="num" style="font-size:18px" id="symNum"></span>
+        <span class="dim">— still huge, but much smaller than 5<sup>125</sup>.</span></p>
+    </div>
+    <div class="col" style="width:30%;height:100%">
+      <span class="dim">What this rule grows:</span>
+      <div class="stage"><canvas id="symArt"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6 · Mutation -->
+<section class="slide" data-init="mutate">
+  <h2>Mutation: change one answer</h2>
+  <p>A <b>mutation</b> is a tiny change: pick one pattern in the table and give it a different answer
+    (its mirror twin changes too). Sometimes nothing happens… sometimes the creature changes completely!</p>
+  <div class="row grow">
+    <div class="col grow">
+      <div class="panel"><canvas id="mutTable"></canvas></div>
+      <div class="btns">
+        <button id="mutRandom" class="primary">🎲 Random mutation</button>
+        <button id="mutUndo">↩ Undo</button>
+        <button id="mutReset">Back to start</button>
+        <span class="dim" style="font-size:16px">or click any answer square</span>
+      </div>
+      <div class="stats">
+        <div class="stat"><b id="mutLife">0</b><span>lifetime (rows)</span></div>
+        <div class="stat"><b id="mutWidth">0</b><span>width</span></div>
+        <div class="stat"><b id="mutMass">0</b><span>mass (colored squares)</span></div>
+      </div>
+      <p class="dim" id="mutNote" style="font-size:18px"></p>
+    </div>
+    <div class="col" style="width:34%;height:100%"><div class="stage"><canvas id="mutArt"></canvas></div></div>
+  </div>
+</section>
+
+<!-- 7 · Evolution loop -->
+<section class="slide" data-init="loop">
+  <h2>Evolution: keep what works</h2>
+  <p>Now let the computer do it, thousands of times per second:</p>
+  <div class="flow">
+    <div><b>🎲</b>Mutate<br><span class="dim" style="font-size:16px">change one answer</span></div><i>→</i>
+    <div><b>🌱</b>Grow<br><span class="dim" style="font-size:16px">run the rule</span></div><i>→</i>
+    <div><b>📏</b>Measure<br><span class="dim" style="font-size:16px">give it a score</span></div><i>→</i>
+    <div><b>✅ / ❌</b>Keep or undo<br><span class="dim" style="font-size:16px">keep if not worse</span></div><i>↺</i>
+  </div>
+  <p>What score? We can choose what we want the creature to be good at:</p>
+  <div class="cards">
+    <div class="panel"><b class="c1">⏳ Lifetime</b><p class="dim">How many rows it grows before it disappears. Long-lived creatures!</p></div>
+    <div class="panel"><b class="c2">↔ Width</b><p class="dim">How wide it gets. Big, spreading creatures!</p></div>
+    <div class="panel"><b class="c3">⚖️ Mass</b><p class="dim">How many colored squares it has. Chunky creatures!</p></div>
+    <div class="panel"><b class="c4">😴 Lazy</b><p class="dim">What share of its colored squares just copy the color right above them. It must live at least 20 rows. Calm, striped creatures!</p></div>
+  </div>
+  <p class="dim">One rule: creatures that <b>never stop growing</b> are disqualified — they must finish!</p>
+</section>
+
+<!-- 7 · Evolve! -->
+<section class="slide" data-init="evolve">
+  <h2>Let’s evolve! <small>symmetric rules, 5 colors, starting from an empty table</small></h2>
+  <div class="row grow">
+    <div class="col grow" style="height:100%">
+      <div class="btns">
+        <span class="dim goal-lbl">Make it better at:</span>
+        <button data-metric="lifetime" class="on">⏳ Lifetime</button>
+        <button data-metric="width">↔ Width</button>
+        <button data-metric="mass">⚖️ Mass</button>
+        <button data-metric="lazy">😴 Lazy</button>
+      </div>
+      <div class="btns">
+        <button id="evoRun" class="primary">▶ Run</button>
+        <button id="evoStep">Next improvement</button>
+        <button id="evoReset">Start over</button>
+        <span class="dim" style="font-size:16px">Speed</span><input id="evoSpeed" type="range" min="1" max="14" value="6">
+      </div>
+      <span id="evoNote" class="c2" style="font-size:16px"></span>
+      <div class="stats">
+        <div class="stat"><b class="c1" id="evoScore">1</b><span id="evoScoreLabel">score</span></div>
+        <div class="stat"><b id="evoTries">0</b><span>mutations tried</span></div>
+        <div class="stat"><b id="evoKept">0</b><span>improvements</span></div>
+      </div>
+      <div class="panel" style="padding:8px 12px"><canvas id="evoPlot"></canvas></div>
+      <span class="dim" style="font-size:16px">Every improvement — click one to look at it:</span>
+      <div class="filmstrip" id="evoFilm"></div>
+    </div>
+    <div class="col" style="width:44%;height:100%">
+      <div id="evoView" class="dim" style="font-size:16px;min-height:32px;display:flex;align-items:center;gap:10px"></div>
+      <div class="stage"><canvas id="evoArt"></canvas></div>
+    </div>
+  </div>
+</section>
+
+<!-- 8 · Endless forms -->
+<section class="slide" data-init="gallery">
+  <div class="btns" style="justify-content:space-between">
+    <h2>Endless forms most beautiful</h2>
+    <div class="btns">
+      <select id="galMetric">
+        <option value="lifetime">⏳ Lifetime</option>
+        <option value="width">↔ Width</option>
+        <option value="mass">⚖️ Mass</option>
+        <option value="lazy">😴 Lazy</option>
+      </select>
+      <span class="dim" id="galStatus" style="font-size:16px"></span>
+      <button id="galRun" class="primary">⏸ Pause</button>
+      <button id="galReset">Clear</button>
+    </div>
+  </div>
+  <p class="dim">Evolving new creatures in a loop — each time a run gets stuck for a couple of seconds, a fresh one starts. Sorted with highest scores on top:</p>
+  <div class="gallery" id="galGrid"></div>
+</section>
+
+<div id="lightbox" hidden>
+  <div class="lb-bar">
+    <button id="lbDownload" title="Download PNG">⬇ Download</button>
+    <button id="lbClose" title="Close (Esc)">✕</button>
+  </div>
+  <canvas id="lbArt"></canvas>
+</div>
+
+<nav>
+  <button id="prev">←</button>
+  <div class="dots" id="dots"></div>
+  <span class="count" id="count"></span>
+  <button id="next">→</button>
+</nav>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+
+/* ======================= Core: cellular automaton ======================= */
+const HEX = ['#101217', '#ff7a45', '#ffd166', '#4cc9f0', '#b388ff', '#7ae582'];
+const ICON_HEX = ['#2c3240', ...HEX.slice(1)];        // background color made visible inside tables
+const PAL32 = Uint32Array.from(HEX, h => {
+  const v = parseInt(h.slice(1), 16);
+  return (0xff000000 | ((v & 0xff) << 16) | (v & 0xff00) | (v >>> 16)) >>> 0;
+});
+const S_T = 0, S_LO = 1, S_HI = 2, S_MASS = 3, S_ALIVE = 4, S_LAZY = 5;
+
+class Automaton {
+  constructor(tmax) {
+    this.tmax = tmax; this.W = 2 * tmax + 5; this.c0 = tmax + 2;
+    this.rows = new Uint8Array(2 * this.W);
+    this.grid = new Uint8Array((tmax + 1) * this.W);
+    this.stats = new Int32Array(6);
+  }
+  // Grow from one cell of color 1; full=true keeps all rows for drawing.
+  run(rule, k, full) {
+    const { tmax, W, c0, stats: s } = this, kk = k * k, buf = full ? this.grid : this.rows;
+    if (full) buf.fill(0);
+    let lo = c0, hi = c0, minLo = c0, maxHi = c0, mass = 1, lazy = 0, p = 0, T = tmax, alive = 1;
+    buf[c0] = 1;
+    for (let t = 0; t < tmax; t++) {
+      const n = full ? p + W : W - p;
+      buf[p + lo - 2] = buf[p + lo - 1] = buf[p + hi + 1] = buf[p + hi + 2] = 0;
+      let nlo = -1, nhi = -1, l = 0, c = 0;
+      for (let x = lo - 1, e = hi + 1; x <= e; x++) {
+        const r = buf[p + x + 1], v = rule[l * kk + c * k + r];
+        buf[n + x] = v;
+        if (v) { if (nlo < 0) nlo = x; nhi = x; mass++; lazy += +(v === c); }  // lazy: same color as the cell above
+        l = c; c = r;
+      }
+      if (nlo < 0) { T = t + 1; alive = 0; break; }
+      lo = nlo; hi = nhi; p = n;
+      if (lo < minLo) minLo = lo;
+      if (hi > maxHi) maxHi = hi;
+    }
+    s[S_T] = T; s[S_LO] = minLo; s[S_HI] = maxHi; s[S_MASS] = mass; s[S_ALIVE] = alive; s[S_LAZY] = lazy;
+    return s;
+  }
+}
+
+const METRICS = {
+  lifetime: { label: 'lifetime (rows)', f: s => s[S_T] },
+  width:    { label: 'width (squares)', f: s => s[S_HI] - s[S_LO] + 1 },
+  mass:     { label: 'mass (colored squares)', f: s => s[S_MASS] },
+  // share of colored squares that copy the color above, smoothed by +300 mass so bigger patterns win
+  lazy:     { label: 'lazy (% same as above)', minLife: 20,
+              f: s => s[S_LAZY] / (s[S_MASS] + 300), fmt: v => `${Math.round(v * 100)}%` },
+};
+let activeMetric = 'lifetime';
+// Higher is better. Immortal: −2. Shorter than minLife: in [−1, 0), rising with lifetime ("grow first").
+const scoreOf = (s, metric = activeMetric) => {
+  const m = METRICS[metric];
+  if (s[S_ALIVE]) return -2;
+  if (m.minLife && s[S_T] < m.minLife) return s[S_T] / m.minLife - 1;
+  return m.f(s);
+};
+const fmtScore = (v, metric = activeMetric) => {
+  const m = METRICS[metric];
+  if (v < 0) return m.minLife ? `growing… ${Math.round((v + 1) * m.minLife)}/${m.minLife} rows` : '—';
+  return m.fmt ? m.fmt(v) : String(v);
+};
+
+// Mirror table: case (l,c,r) <-> (r,c,l). Sites = one representative per pair, excluding blank case 0.
+function symmetry(k) {
+  const n = k ** 3, kk = k * k;
+  const mirror = Uint16Array.from({ length: n }, (_, i) => (i % k) * kk + ((i / k | 0) % k) * k + (i / kk | 0));
+  const sites = Uint16Array.from([...mirror.keys()].filter(i => i > 0 && i <= mirror[i]));
+  return { mirror, sites };
+}
+
+function parseRule(k, num) {
+  const out = new Uint8Array(k ** 3), K = BigInt(k);
+  let v = BigInt(num);
+  for (let i = 0; i < out.length; i++) { out[i] = Number(v % K); v /= K; }
+  return out;
+}
+
+/* ======================= Drawing helpers ======================= */
+function fitCanvas(c) {
+  const d = devicePixelRatio || 1;
+  const w = Math.max(1, Math.round(c.clientWidth * d)), h = Math.max(1, Math.round(c.clientHeight * d));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  return c.getContext('2d');
+}
+
+// Bitmap (1 px per cell) of the automaton's last full run.
+function toBitmap(a, off = document.createElement('canvas')) {
+  const s = a.stats, h = (s[S_ALIVE] ? a.tmax : s[S_T]) + 1;
+  const x0 = s[S_LO] - 1, w = s[S_HI] - s[S_LO] + 3;
+  off.width = w; off.height = h;
+  const ctx = off.getContext('2d'), img = ctx.createImageData(w, h), px = new Uint32Array(img.data.buffer);
+  for (let y = 0, i = 0; y < h; y++) {
+    const o = y * a.W + x0;
+    for (let x = 0; x < w; x++) px[i++] = PAL32[a.grid[o + x]];
+  }
+  ctx.putImageData(img, 0, 0);
+  return off;
+}
+
+function drawFit(canvas, src, pad = 10) {
+  const ctx = fitCanvas(canvas), W = canvas.width, H = canvas.height, d = devicePixelRatio || 1;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const s = Math.min((W - 2 * pad * d) / src.width, (H - 2 * pad * d) / src.height);
+  const w = src.width * s, h = src.height * s;
+  ctx.imageSmoothingEnabled = s < 1;
+  ctx.drawImage(src, ((W - w) / 2) | 0, ((H - h) / 2) | 0, w, h);
+}
+
+const sharedAuto = new Automaton(600);
+function renderRule(canvas, rule, k) {
+  sharedAuto.run(rule, k, true);
+  drawFit(canvas, toBitmap(sharedAuto));
+  canvas.ruleRef = { rule: rule.slice(), k };          // lets the lightbox re-render it full size
+  return sharedAuto.stats;
+}
+
+/* Lightbox: click a creature to view it full screen, with a PNG download */
+const lightbox = {
+  el: null, ref: null,
+  open(ref) {
+    if (!ref) return;
+    this.ref = ref;
+    this.el.hidden = false;
+    this.draw();
+  },
+  close() { this.el.hidden = true; this.ref = null; },
+  draw() {
+    if (!this.ref) return;
+    renderRule($('lbArt'), this.ref.rule, this.ref.k);
+  },
+  download() {
+    if (!this.ref) return;
+    sharedAuto.run(this.ref.rule, this.ref.k, true);
+    const bmp = toBitmap(sharedAuto);
+    const sc = Math.max(1, Math.floor(2048 / Math.max(bmp.width, bmp.height)));
+    const out = document.createElement('canvas');
+    out.width = bmp.width * sc; out.height = bmp.height * sc;
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(bmp, 0, 0, out.width, out.height);
+    out.toBlob(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `creature-k${this.ref.k}-${Date.now()}.png`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    });
+  },
+};
+
+/* Case table: all k^3 patterns as little icons (3 cells on top, answer below), Wolfram order.
+   Supports hover / click hit-testing, highlighting and dimming. */
+class CaseTable {
+  // fit=true: cell size is derived from the width of the parent element (capped at `cell`)
+  constructor(canvas, { cols, cell, showOutput = true, fit = false, onClick, onHover }) {
+    Object.assign(this, { canvas, cols, maxCols: cols, maxCell: cell, cell, showOutput, fit, onClick, onHover });
+    this.highlight = null; this.focus = -1; this.k = 2; this.rule = null;
+    canvas.style.cursor = onClick ? 'pointer' : 'default';
+    canvas.addEventListener('mousemove', e => this.onHover?.(this.hit(e)));
+    canvas.addEventListener('mouseleave', () => this.onHover?.(-1));
+    canvas.addEventListener('click', e => { const i = this.hit(e); if (i >= 0) (this.onClick || this.onHover)?.(i); });
+  }
+  set(k, rule, cols = this.maxCols, cell = this.maxCell) {
+    Object.assign(this, { k, rule, cols, maxCols: cols, maxCell: cell });
+    this.draw();
+  }
+  get n() { return this.k ** 3; }
+  get pitchX() { return 4 * this.cell; }
+  get pitchY() { return (this.showOutput ? 3 : 1.6) * this.cell; }
+  hit(e) {
+    const r = this.canvas.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const col = Math.floor(x / this.pitchX), row = Math.floor(y / this.pitchY);
+    if (col < 0 || col >= this.cols || x % this.pitchX > 3 * this.cell) return -1;
+    const j = row * this.cols + col;
+    return j >= 0 && j < this.n ? this.n - 1 - j : -1;
+  }
+  draw() {
+    const { k, n, rule, canvas } = this, kk = k * k;
+    if (this.fit) {
+      const p = canvas.parentElement, cs = getComputedStyle(p);
+      const avail = p.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+      this.cols = this.maxCols;
+      this.cell = Math.min(this.maxCell, Math.floor(avail / (4 * this.cols - 1)));
+      if (this.cell < 6) {
+        this.cols = Math.max(4, Math.floor((avail + 6) / 24));
+        this.cell = Math.max(4, Math.floor(avail / (4 * this.cols - 1)));
+      }
+    } else { this.cols = this.maxCols; this.cell = this.maxCell; }
+    const cols = this.cols, cell = this.cell, rowsN = Math.ceil(n / cols);
+    canvas.style.width = cols * this.pitchX - cell + 'px';
+    canvas.style.height = rowsN * this.pitchY - (this.showOutput ? cell : 0.6 * cell) + 'px';
+    const ctx = fitCanvas(canvas), d = devicePixelRatio || 1;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const gap = Math.max(1, cell / 10);
+    const box = (x, y, v) => { ctx.fillStyle = ICON_HEX[v]; ctx.fillRect(x, y, cell - gap, cell - gap); };
+    for (let j = 0; j < n; j++) {
+      const i = n - 1 - j, x = (j % cols) * this.pitchX, y = ((j / cols) | 0) * this.pitchY;
+      const hl = this.highlight;
+      ctx.globalAlpha = !hl || hl.has(i) ? 1 : 0.18;
+      box(x, y, (i / kk) | 0); box(x + cell, y, ((i / k) | 0) % k); box(x + 2 * cell, y, i % k);
+      if (this.showOutput) box(x + cell, y + cell, rule[i]);
+      if (i === this.focus || hl?.has(i) && hl.size <= 2) {
+        ctx.globalAlpha = 1; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+        ctx.strokeRect(x - 3, y - 3, 3 * cell + 6 - gap, (this.showOutput ? 2 : 1) * cell + 6 - gap);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+const fmtBig = s => s.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+/* ======================= Reference rule ======================= */
+const REF_K = 5;
+const REF_NUM = '1298006488270263385596330574676987474149923919100765096125142129208199683832085272667625';
+const REF_RULE = parseRule(REF_K, REF_NUM);
+const SYM5 = symmetry(5);
+
+/* ======================= Slides ======================= */
+const inits = {};
+const redraws = {};          // per-slide redraw on resize
+
+/* --- 1. Title: the creature grows row by row and crawls away into the distance (Star Wars style) --- */
+inits.title = () => {
+  const rule = parseRule(4, '99727935226198744475500381489287701516');
+  const a = new Automaton(600);
+  a.run(rule, 4, true);
+  const bmp = toBitmap(a), H = bmp.height, seedX = a.c0 - (a.stats[S_LO] - 1);
+  {                                                    // transparent background so the stars show through
+    const bctx = bmp.getContext('2d'), img = bctx.getImageData(0, 0, bmp.width, H), px = new Uint32Array(img.data.buffer);
+    for (let i = 0; i < px.length; i++) if (px[i] === PAL32[0]) px[i] = 0;
+    bctx.putImageData(img, 0, 0);
+  }
+  // reach[y]: max distance (in cells) from the seed column over rows 0..y — used to zoom out as it grows
+  const reach = new Float32Array(H);
+  for (let y = 0, r = 0; y < H; y++) {
+    const o = y * a.W;
+    for (let x = 0; x < a.W; x++) if (a.grid[o + x]) r = Math.max(r, Math.abs(x - a.c0));
+    reach[y] = r;
+  }
+  const stars = Array.from({ length: 90 }, () => [Math.random(), Math.random(), Math.random()]);
+  const SPEED = 45, DEPTH = 50, EASE = 1.2;          // rows/s, perspective strength (rows), slow-down time (s)
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let t = still ? H : 0, v = still ? 0 : SPEED, last = 0, raf = 0, cell = 0;
+
+  function frame(now) {
+    raf = 0;
+    const c = $('titleArt'), ctx = fitCanvas(c), W = c.width, Hc = c.height, d = devicePixelRatio || 1;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, W, Hc);
+    // rows grown so far (fractional). Exponential slow-down travels v·EASE more rows, so start easing
+    // that far before the end: the crawl comes to rest with the last row right at the bottom edge.
+    const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
+    last = now;
+    if (t >= H - SPEED * EASE) v *= Math.exp(-dt / EASE);
+    t = Math.min(H, t + v * dt);
+
+    // layout: portrait → plane below the text; landscape → plane right of the text
+    const cr = c.getBoundingClientRect(), tr = c.parentElement.querySelector('.title-text').getBoundingClientRect();
+    const port = W < Hc;
+    const left = port ? 0 : Math.max((tr.right - cr.left) * d + 24 * d, W * 0.45);
+    const yh = port ? Math.min((tr.bottom - cr.top) * d + 24 * d, Hc * 0.6) : Hc * 0.1;
+    const nearW = (W - left) * (port ? 0.96 : 0.92), cx = (left + W) / 2, yb = Hc;
+
+    // stars over the whole frame
+    for (const [sx, sy, sb] of stars) {
+      ctx.fillStyle = `rgba(238,240,245,${0.15 + 0.35 * sb})`;
+      ctx.fillRect(sx * W, sy * Hc, d * (1 + sb), d * (1 + sb));
+    }
+
+    const head = Math.min(t, H - 1) | 0;                 // newest grown row
+    const target = Math.min(28 * d, nearW / (2 * reach[head] + 3));
+    cell = cell ? cell + (target - cell) * 0.06 : target;
+    ctx.imageSmoothingEnabled = false;
+    let lastY = Infinity;
+    // near → far; a row of age g spans depth [DEPTH+g-1, DEPTH+g], so the newest row slides in from below
+    for (let i = head; i >= 0; i--) {
+      const g = t - i, zN = DEPTH + g - 1, zF = DEPTH + g;
+      const yN = yh + (yb - yh) * DEPTH / zN, yF = yh + (yb - yh) * DEPTH / zF;
+      if (yF >= Hc) continue;
+      const top = Math.floor(yF);
+      if (top >= lastY) continue;                      // sub-pixel rows: one per scanline is enough
+      lastY = top;
+      const s = cell * DEPTH / ((zN + zF) / 2);        // px per cell at this depth
+      ctx.globalAlpha = Math.min(1, 3.5 * DEPTH / zF);
+      ctx.drawImage(bmp, 0, i, bmp.width, 1, cx - (seedX + 0.5) * s, top, bmp.width * s, Math.max(1, Math.min(yN, Hc) - top));
+    }
+    ctx.globalAlpha = 1;
+    const settled = v < 0.02 && Math.abs(target - cell) < 0.01 * target;
+    if (!settled) raf = requestAnimationFrame(frame);
+  }
+  redraws.title = () => { last = 0; if (!raf) raf = requestAnimationFrame(frame); };
+  leave.title = () => { cancelAnimationFrame(raf); raf = 0; };
+  redraws.title();
+};
+
+/* --- 2. Step-by-step --- */
+inits.stepper = () => {
+  const K = 2, COLS = 31, ROWS = 16;
+  const rule = new Uint8Array(8);
+  [1, 3, 4, 6].forEach(i => rule[i] = 1);              // rule 90: left XOR right (symmetric, Sierpinski)
+  const grid = new Uint8Array(COLS * ROWS);
+  let t = 0, x = 0, timer = 0;
+  const table = new CaseTable($('stepTable'), {
+    cols: 4, cell: 26, fit: true,
+    onClick: i => { rule[i] = 1 - rule[i]; restart(); },
+  });
+
+  const get = (r, c) => c < 0 || c >= COLS ? 0 : grid[r * COLS + c];
+  const caseAt = (r, c) => get(r, c - 1) * 4 + get(r, c) * 2 + get(r, c + 1);
+  const done = () => t >= ROWS - 1;
+
+  function restart() {
+    grid.fill(0); grid[COLS >> 1] = 1; t = 0; x = 0; stop();
+    table.focus = -1; table.set(K, rule); draw();
+  }
+  function step() {
+    if (done()) return stop();
+    grid[(t + 1) * COLS + x] = rule[caseAt(t, x)];
+    table.focus = caseAt(t, x);
+    if (++x === COLS) { x = 0; t++; }
+    table.draw(); draw();
+  }
+  function stop() { clearInterval(timer); timer = 0; $('stepPlay').textContent = '▶ Play'; }
+  function draw() {
+    const c = $('stepGrid'), ctx = fitCanvas(c), d = devicePixelRatio || 1;
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    const W = c.clientWidth, H = c.clientHeight, cs = Math.floor(Math.min(W / COLS, H / ROWS));
+    const ox = (W - cs * COLS) / 2, oy = (H - cs * ROWS) / 2;
+    ctx.clearRect(0, 0, W, H);
+    for (let r = 0; r < ROWS; r++) for (let q = 0; q < COLS; q++) {
+      const known = r < t + 1 || (r === t + 1 && q < x);
+      ctx.fillStyle = known ? ICON_HEX[grid[r * COLS + q]] : '#161a22';
+      ctx.fillRect(ox + q * cs + 1, oy + r * cs + 1, cs - 2, cs - 2);
+    }
+    if (done() || table.focus < 0) return;
+    // the window of three cells being read, and the cell being written
+    const px = x === 0 ? COLS - 1 : x - 1, pt = x === 0 ? t - 1 : t;
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = '#4cc9f0';
+    ctx.strokeRect(ox + (px - 1) * cs, oy + pt * cs, 3 * cs, cs);
+    ctx.strokeStyle = '#fff';
+    ctx.strokeRect(ox + px * cs, oy + (pt + 1) * cs, cs, cs);
+  }
+
+  $('stepBtn').onclick = step;
+  $('stepAll').onclick = () => { stop(); while (!done()) step(); table.focus = -1; table.draw(); draw(); };
+  $('stepReset').onclick = restart;
+  $('stepPlay').onclick = () => {
+    if (timer) return stop();
+    timer = setInterval(step, 90);
+    $('stepPlay').textContent = '⏸ Pause';
+  };
+  redraws.stepper = () => { table.draw(); draw(); };
+  restart();
+};
+
+/* --- 3. Counting patterns & rules --- */
+inits.cases = () => {
+  const table = new CaseTable($('casesTable'), { cols: 15, cell: 16, showOutput: false, fit: true });
+  // fixed cell size (16px) so the table's area grows in exact proportion to k³: 4×2 → 9×3 → 12×6 → 15×9
+  const COLS = { 2: 4, 3: 9, 4: 12, 5: 15 };
+  const setK = k => {
+    for (const b of document.querySelectorAll('[data-init="cases"] [data-k]')) b.classList.toggle('on', +b.dataset.k === k);
+    const n = k ** 3, digits = (BigInt(k) ** BigInt(n)).toString();
+    $('casesK1').textContent = $('casesK2').textContent = $('casesK3').textContent = k;
+    $('casesEq').textContent = `${k} × ${k} × ${k} = ${n} patterns`;
+    table.set(k, new Uint8Array(n), COLS[k], 16);
+    $('rulesCases').textContent = $('rulesCases2').textContent = n;
+    $('rulesK').textContent = $('rulesK2').textContent = k;
+    $('rulesEq').innerHTML = `${k}<sup>${n}</sup> = ${digits.length > 6 ? `a number with <span class="c2">${digits.length} digits</span>` : fmtBig(digits)}`;
+    $('rulesNum').textContent = fmtBig(digits);
+    $('rulesCompare').innerHTML = digits.length > 80
+      ? `🌌 That is <b>more than the number of atoms in the whole universe</b> (about 1 followed by 80 zeros). We could never try them all!`
+      : `That is ${digits.length > 10 ? 'already a <b>gigantic</b> number' : 'small enough to try them all with a computer'}.`;
+  };
+  document.querySelector('[data-init="cases"]').addEventListener('click', e => e.target.dataset.k && setK(+e.target.dataset.k));
+  redraws.cases = () => table.draw();
+  setK(2);
+};
+
+/* --- 5. Symmetry --- */
+inits.sym = () => {
+  const { mirror } = SYM5;
+  const self = new Set([...mirror.keys()].filter(i => mirror[i] === i));
+  const pairs = new Set([...mirror.keys()].filter(i => mirror[i] !== i));
+  let mode = null;
+  const table = new CaseTable($('symTable'), {
+    cols: 17, cell: 16, fit: true,
+    onHover: i => { table.highlight = i < 0 ? mode : new Set([i, mirror[i]]); table.draw(); },
+  });
+  const setMode = (m, id) => {
+    mode = m;
+    for (const b of ['symSelf', 'symPairs', 'symNone']) $(b).classList.toggle('on', b === id);
+    table.highlight = m; table.draw();
+  };
+  $('symSelf').onclick = () => setMode(self, 'symSelf');
+  $('symPairs').onclick = () => setMode(pairs, 'symPairs');
+  $('symNone').onclick = () => setMode(null, 'symNone');
+  $('symNum').textContent = fmtBig((5n ** 75n).toString());
+  table.set(5, REF_RULE);
+  redraws.sym = () => { table.draw(); renderRule($('symArt'), REF_RULE, 5); };
+  redraws.sym();
+};
+
+/* --- 6. Mutation --- */
+inits.mutate = () => {
+  const { mirror, sites } = SYM5;
+  const rule = REF_RULE.slice(), history = [];
+  const table = new CaseTable($('mutTable'), {
+    cols: 17, cell: 16, fit: true,
+    onClick: i => { if (i) mutate(i, (rule[i] + 1) % 5); },
+  });
+  function show(changed) {
+    table.highlight = changed >= 0 ? new Set([changed, mirror[changed]]) : null;
+    table.set(5, rule);
+    const s = renderRule($('mutArt'), rule, 5);
+    $('mutLife').textContent = s[S_ALIVE] ? '∞' : METRICS.lifetime.f(s);
+    $('mutWidth').textContent = METRICS.width.f(s);
+    $('mutMass').textContent = METRICS.mass.f(s);
+    $('mutNote').textContent = s[S_ALIVE]
+      ? 'This one never stops growing — in evolution it would be disqualified.'
+      : history.length ? `${history.length} mutation${history.length > 1 ? 's' : ''} so far.` : 'This is our reference rule.';
+  }
+  function mutate(i, v) {
+    history.push(rule.slice());
+    rule[i] = rule[mirror[i]] = v;
+    show(i);
+  }
+  $('mutRandom').onclick = () => {
+    const i = sites[(Math.random() * sites.length) | 0];
+    mutate(i, (rule[i] + 1 + ((Math.random() * 4) | 0)) % 5);
+  };
+  $('mutUndo').onclick = () => { if (history.length) { rule.set(history.pop()); show(-1); } };
+  $('mutReset').onclick = () => { history.length = 0; rule.set(REF_RULE); show(-1); };
+  redraws.mutate = () => show(-1);
+  show(-1);
+};
+
+/* --- 7. Loop: static slide --- */
+inits.loop = () => {};
+
+/* --- 7. Evolve --- */
+inits.evolve = () => {
+  const K = 5, n = 125, { mirror, sites } = SYM5, a = new Automaton(400);
+  const PATIENCE = 10000;                                // "Next improvement" gives up after this many tries
+  const MAX_LIFE = a.tmax - 1;                           // living a.tmax rows counts as "never stops"
+  const film = $('evoFilm');
+  let rule, cand, fit, tries, kept, hist;
+  let mode = null;                                       // null (paused) | 'run' | 'next'
+  let since = 0, loop = 0, viewing = null;               // tries since last improvement, rAF id, shown snapshot
+
+  const score = s => scoreOf(s, activeMetric);
+  function reset() {
+    rule = new Uint8Array(n); cand = new Uint8Array(n);
+    fit = score(a.run(rule, K, false)); tries = 0; kept = 0; since = 0; hist = [[0, fit]];
+    film.replaceChildren();
+    $('evoNote').textContent = '';
+    view(null);
+    show();
+  }
+  // one mutation + selection; returns true on strict improvement
+  function attempt() {
+    cand.set(rule);
+    const i = sites[(Math.random() * sites.length) | 0];
+    cand[i] = cand[mirror[i]] = (cand[i] + 1 + ((Math.random() * (K - 1)) | 0)) % K;
+    const f = score(a.run(cand, K, false));
+    tries++; since++;
+    if (f < fit) return false;
+    [rule, cand] = [cand, rule];
+    if (f === fit) return false;
+    fit = f; kept++; since = 0; hist.push([tries, fit]);
+    addFilm();
+    return true;
+  }
+
+  /* --- filmstrip of improvements; clicking one shows it on the right --- */
+  function addFilm() {
+    const c = document.createElement('canvas');
+    const snap = { rule: rule.slice(), fit, n: kept, x: tries, label: METRICS[activeMetric].label };
+    c.title = `Improvement #${kept}: ${snap.label} ${fmtScore(fit)}`;
+    c.onclick = () => view(viewing === snap ? null : snap, c);
+    film.append(c);
+    while (film.children.length > 80) film.firstChild.remove();
+    renderRule(c, rule, K);
+    film.scrollLeft = film.scrollWidth;
+  }
+  function view(snap, el = null) {
+    viewing = snap;
+    for (const c of film.children) c.classList.toggle('sel', !!snap && c === el);
+    $('evoView').innerHTML = snap
+      ? `<span>Looking at improvement <b>#${snap.n}</b> · ${snap.label} <b>${fmtScore(snap.fit)}</b></span><button id="evoLive">Show latest</button>`
+      : '<span>Latest creature</span>';
+    renderArt();
+    plot();
+  }
+  $('evoView').onclick = e => { if (e.target.id === 'evoLive') view(null); };
+  const renderArt = () => renderRule($('evoArt'), viewing ? viewing.rule : rule, K);
+
+  function show() {
+    renderArt();
+    $('evoScore').textContent = fmtScore(fit);
+    $('evoScoreLabel').textContent = METRICS[activeMetric].label;
+    $('evoKept').textContent = kept;
+    showProgress();
+  }
+  function showProgress() {
+    $('evoTries').textContent = tries.toLocaleString();
+    plot();
+  }
+  function plot() {
+    if (!hist) return;
+    const c = $('evoPlot'), ctx = fitCanvas(c), d = devicePixelRatio || 1, W = c.clientWidth, H = c.clientHeight;
+    ctx.setTransform(d, 0, 0, d, 0, 0); ctx.clearRect(0, 0, W, H);
+    const xmax = Math.max(tries, 1), ymax = Math.max(...hist.map(h => h[1]), 1);
+    const px = x => 8 + x / xmax * (W - 16), py = y => H - 6 - Math.max(y, 0) / ymax * (H - 24);
+    ctx.strokeStyle = HEX[1]; ctx.lineWidth = 3; ctx.beginPath();
+    hist.forEach(([x, y], i) => { if (i) ctx.lineTo(px(x), py(hist[i - 1][1])); ctx.lineTo(px(x), py(y)); });
+    ctx.lineTo(px(xmax), py(fit)); ctx.stroke();
+    if (viewing) {                                       // mark the snapshot being looked at
+      ctx.fillStyle = '#fff'; ctx.beginPath();
+      ctx.arc(px(viewing.x), py(viewing.fit), 6, 0, 2 * Math.PI); ctx.fill();
+    }
+    ctx.fillStyle = '#9aa1b0'; ctx.font = '14px system-ui';
+    ctx.fillText(`best ${METRICS[activeMetric].label}: ${fmtScore(fit)}`, 10, 16);
+  }
+
+  /* --- run loop: 'run' keeps going, 'next' stops at an improvement or after PATIENCE tries --- */
+  function frame() {
+    loop = 0;
+    if (!mode) return;
+    const budget = mode === 'next' ? Math.max(12, +$('evoSpeed').value) : +$('evoSpeed').value;
+    const end = performance.now() + budget;
+    let changed = false;
+    do {
+      if (attempt()) {
+        changed = true;
+        if (activeMetric === 'lifetime' && fit >= MAX_LIFE) {
+          setMode(null, `🏆 Reached the longest lifetime we allow (${MAX_LIFE} rows)! Try Width or Mass next.`);
+          break;
+        }
+        if (mode === 'next') { setMode(null, `Found improvement #${kept}!`); break; }
+      }
+      if (mode === 'next' && since >= PATIENCE) {
+        setMode(null, `No improvement in ${PATIENCE.toLocaleString()} tries — paused. Try again, or press Run.`);
+        break;
+      }
+    } while (performance.now() < end);
+    changed ? show() : showProgress();
+    if (mode) loop = requestAnimationFrame(frame);
+  }
+  function setMode(m, note = '') {
+    mode = m;
+    if (m === 'next') since = 0;
+    $('evoRun').textContent = m === 'run' ? '⏸ Pause' : '▶ Run';
+    $('evoStep').textContent = m === 'next' ? '⏸ Searching…' : 'Next improvement';
+    $('evoNote').textContent = note;
+    if (m && !loop) loop = requestAnimationFrame(frame);
+  }
+
+  $('evoRun').onclick = () => setMode(mode === 'run' ? null : 'run');
+  $('evoStep').onclick = () => {
+    if (activeMetric === 'lifetime' && fit >= MAX_LIFE) return setMode(null, `🏆 Already at the longest lifetime we allow (${MAX_LIFE} rows)!`);
+    setMode(mode === 'next' ? null : 'next');
+  };
+  $('evoReset').onclick = reset;
+  document.querySelector('[data-init="evolve"]').addEventListener('click', e => {
+    const m = e.target.dataset.metric;
+    if (!m) return;
+    activeMetric = usedMetric = m;
+    for (const b of document.querySelectorAll('[data-metric]')) b.classList.toggle('on', b === e.target);
+    reset();
+  });
+  let usedMetric = activeMetric;
+  redraws.evolve = () => {
+    if (usedMetric !== activeMetric) {
+      usedMetric = activeMetric;
+      for (const b of document.querySelectorAll('[data-metric]')) b.classList.toggle('on', b.dataset.metric === activeMetric);
+      return reset();
+    }
+    show();
+  };
+  leave.evolve = () => setMode(null);
+  reset();
+};
+
+/* --- 8. Gallery: continuously evolve up to 50 forms, sorted by score --- */
+inits.gallery = () => {
+  const K = 5, n = 125, { mirror, sites } = SYM5, a = new Automaton(400);
+  const MAX_FORMS = 50, STUCK_MS = 2000, MIN_ROWS = 12;
+  const grid = $('galGrid');
+  let metric = null, forms = [], cur = null, rule, cand, fit, rows = 1, lastImp = 0, running = false, loop = 0;
+
+  function updateHeader() {
+    $('galMetric').value = metric;
+    $('galStatus').textContent = `${forms.length} / ${MAX_FORMS} forms`;
+    $('galRun').textContent = running ? '⏸ Pause' : '▶ Run';
+  }
+  function startRun() {
+    if (cur) { cur.el.classList.remove('cur'); cur = null; }
+    if (forms.length >= MAX_FORMS) { setRun(false); return; }
+    rule = new Uint8Array(n); cand = new Uint8Array(n);
+    fit = scoreOf(a.run(rule, K, false), metric); rows = 1;
+    lastImp = performance.now();
+    updateHeader();
+  }
+  function upsertCard() {
+    if (!cur) {
+      const el = document.createElement('div'), canvas = document.createElement('canvas'), span = document.createElement('span');
+      el.className = 'gcard cur'; el.append(canvas, span);
+      cur = { el, canvas, span, rule: rule.slice(), fit };
+      forms.push(cur);
+    } else {
+      cur.rule.set(rule); cur.fit = fit;
+    }
+    cur.span.textContent = fmtScore(fit, metric);
+    const before = forms.find(x => x !== cur && x.fit < cur.fit);
+    grid.insertBefore(cur.el, before ? before.el : null);
+    forms.sort((a, b) => b.fit - a.fit);
+    renderRule(cur.canvas, cur.rule, K);
+    updateHeader();
+  }
+  function frame() {
+    loop = 0;
+    if (!running) return;
+    const end = performance.now() + 8;
+    let improved = false;
+    do {
+      cand.set(rule);
+      const i = sites[(Math.random() * sites.length) | 0];
+      cand[i] = cand[mirror[i]] = (cand[i] + 1 + ((Math.random() * (K - 1)) | 0)) % K;
+      const s = a.run(cand, K, false), f = scoreOf(s, metric);
+      if (f >= fit) {
+        [rule, cand] = [cand, rule]; rows = s[S_T];
+        if (f > fit) { fit = f; lastImp = performance.now(); improved = true; }
+      }
+    } while (performance.now() < end);
+    if (improved && fit > 0 && rows >= MIN_ROWS) upsertCard();
+    if (performance.now() - lastImp > STUCK_MS || (metric === 'lifetime' && fit >= a.tmax - 1)) startRun();
+    if (running) loop = requestAnimationFrame(frame);
+  }
+  function setRun(on) {
+    running = on;
+    updateHeader();
+    if (on && !loop) loop = requestAnimationFrame(frame);
+  }
+  function resetAll() {
+    metric = activeMetric;
+    forms = []; cur = null; grid.replaceChildren();
+    startRun();
+    setRun(true);
+  }
+  $('galMetric').onchange = e => { activeMetric = e.target.value; resetAll(); };
+  $('galRun').onclick = () => {
+    if (!running && forms.length >= MAX_FORMS) return resetAll();
+    setRun(!running);
+  };
+  $('galReset').onclick = resetAll;
+  redraws.gallery = entering => {
+    if (metric !== activeMetric) return resetAll();
+    for (const f of forms) renderRule(f.canvas, f.rule, K);
+    if (entering && forms.length < MAX_FORMS) setRun(true);
+  };
+  leave.gallery = () => setRun(false);
+  resetAll();
+};
+
+/* ======================= Navigation ======================= */
+const slides = [...document.querySelectorAll('.slide')];
+const leave = {};
+const started = new Set();
+let current = -1;
+
+slides.forEach((_, i) => {
+  const dot = document.createElement('span');
+  dot.onclick = () => go(i);
+  $('dots').append(dot);
+});
+
+function go(i) {
+  i = Math.max(0, Math.min(slides.length - 1, i));
+  if (i === current) return;
+  const prev = slides[current];
+  if (prev) { prev.classList.remove('active'); leave[prev.dataset.init]?.(); }
+  current = i;
+  const s = slides[i], name = s.dataset.init;
+  s.classList.add('active'); s.scrollTop = 0;
+  [...$('dots').children].forEach((d, j) => d.classList.toggle('on', j === i));
+  $('count').textContent = `${i + 1} / ${slides.length}`;
+  history.replaceState(null, '', '#' + (i + 1));
+  requestAnimationFrame(() => {                      // layout is ready once the slide is visible
+    if (!started.has(name)) { started.add(name); inits[name](); return; }
+    redraws[name]?.(true);
+  });
+}
+
+$('prev').onclick = () => go(current - 1);
+$('next').onclick = () => go(current + 1);
+lightbox.el = $('lightbox');
+$('lbClose').onclick = $('lbArt').onclick = () => lightbox.close();
+$('lbDownload').onclick = () => lightbox.download();
+document.addEventListener('click', e => {
+  const c = e.target.closest('.gcard')?.querySelector('canvas') ?? (e.target.id === 'evoArt' ? e.target : null);
+  if (c) lightbox.open(c.ruleRef);
+});
+addEventListener('keydown', e => {
+  if (!lightbox.el.hidden) { if (e.key === 'Escape') lightbox.close(); return; }
+  if (e.target.matches('input')) return;
+  if (e.key === 'ArrowRight' || e.key === 'PageDown') go(current + 1);
+  if (e.key === 'ArrowLeft' || e.key === 'PageUp') go(current - 1);
+});
+let touchX = 0, touchY = 0;
+addEventListener('touchstart', e => {
+  if (e.target.closest('input, .filmstrip, #lightbox')) { touchX = NaN; return; }
+  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
+}, { passive: true });
+addEventListener('touchend', e => {
+  if (isNaN(touchX)) return;
+  const dx = e.changedTouches[0].clientX - touchX, dy = e.changedTouches[0].clientY - touchY;
+  if (Math.abs(dx) > 50 && Math.abs(dx) > 2 * Math.abs(dy)) go(current + (dx < 0 ? 1 : -1));
+}, { passive: true });
+addEventListener('resize', () => { redraws[slides[current].dataset.init]?.(); lightbox.draw(); });
+
+go((parseInt(location.hash.slice(1)) || 1) - 1);
+</script>
+</body>
+</html>
